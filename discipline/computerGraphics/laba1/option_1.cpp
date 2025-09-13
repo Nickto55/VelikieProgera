@@ -132,25 +132,32 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
 
     switch (uMsg) {
         case WM_PAINT: {
-            PAINTSTRUCT ps;
-            HDC hdc = BeginPaint(hwnd, &ps);
-            SetBkMode(hdc, TRANSPARENT);
+    PAINTSTRUCT ps;
+    HDC hdc = BeginPaint(hwnd, &ps);
 
-            // Копируем текущие координаты и округляем
-            copy_matrix(&risunok[0][0], &krest[0][0], size);
-            round_mat(&risunok[0][0], size);
+    // Очистка фона — ключевое изменение!
+    SetBkColor(hdc, RGB(255, 255, 255));
+    SetBkMode(hdc, OPAQUE);
+    Rectangle(hdc, 0, 0, 800, 600);
 
-            // Рисуем первую линию (Брезенхем)
-            bresenhamLine(hdc, risunok[0][0], risunok[0][1], risunok[1][0], risunok[1][1], RGB(255, 0, 0));
+    // Настройка для рисования линий
+    SetBkMode(hdc, TRANSPARENT);
 
-            // Рисуем вторую линию (GDI LineTo)
-            MoveToEx(hdc, (int)risunok[2][0], (int)risunok[2][1], NULL);
-            LineTo(hdc, (int)risunok[3][0], (int)risunok[3][1]);
+    // Копируем текущие координаты и округляем
+    copy_matrix(&risunok[0][0], &krest[0][0], size);
+    round_mat(&risunok[0][0], size);
 
-            EndPaint(hwnd, &ps);
-            needRedraw = false;
-            break;
-        }
+    // Рисуем первую линию (Брезенхем)
+    bresenhamLine(hdc, risunok[0][0], risunok[0][1], risunok[1][0], risunok[1][1], RGB(255, 0, 0));
+
+    // Рисуем вторую линию (GDI LineTo)
+    MoveToEx(hdc, (int)risunok[2][0], (int)risunok[2][1], NULL);
+    LineTo(hdc, (int)risunok[3][0], (int)risunok[3][1]);
+
+    EndPaint(hwnd, &ps);
+    needRedraw = false;
+    break;
+}
 
         case WM_KEYDOWN: {
             double var[2] = {0, 0};
