@@ -9,6 +9,7 @@ int main(void) {
 
     SetConsoleOutputCP(CP_UTF8);
 
+
     char line[MAXLEN];
     char word[MAXLEN];
     int i;
