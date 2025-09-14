@@ -138,7 +138,7 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
     // Очистка фона — ключевое изменение!
     SetBkColor(hdc, RGB(255, 255, 255));
     SetBkMode(hdc, OPAQUE);
-    Rectangle(hdc, 0, 0, 800, 600);
+    Rectangle(hdc, 0, 0, 1900, 1200);
 
     // Настройка для рисования линий
     SetBkMode(hdc, TRANSPARENT);
