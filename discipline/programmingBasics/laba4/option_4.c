@@ -1,3 +1,89 @@
+#include <stdio.h>
+#include <string.h>
+#include <windows.h>
+#define MAXLEN 1000
+
+int main(void) {
+    HANDLE hStdout;
+    FILE *fp;
+
+    SetConsoleOutputCP(CP_UTF8);
+
+    char line[MAXLEN];
+    char word[MAXLEN];
+    int i;
+    int flag;
+    int prev_flag;
+    char *ptr;
+    WORD foregroundColor0;
+    WORD foregroundColor1;
+    WORD foregroundColor;
+    WORD backgroundColor;
+    WORD textAttribute;
+
+    hStdout = GetStdHandle(STD_OUTPUT_HANDLE);
+
+    foregroundColor0 = FOREGROUND_INTENSITY | FOREGROUND_BLUE | FOREGROUND_GREEN;
+    foregroundColor1 = FOREGROUND_INTENSITY | FOREGROUND_RED;
+    backgroundColor = BACKGROUND_BLUE | BACKGROUND_BLUE | BACKGROUND_GREEN | BACKGROUND_RED;
+
+    SetConsoleTextAttribute(hStdout, foregroundColor0 | backgroundColor);
+
+    fp = fopen("option.c", "rt");
+    if(fp == NULL)
+        return 1;
+
+    while(!feof(fp)) {
+        ptr = fgets(line, MAXLEN, fp);
+        if(ptr == NULL)
+            break;
+
+        i = 0;
+        prev_flag = flag = 0;
+        word[0] = '\0';
+
+        while(*ptr != 0) {
+            prev_flag = flag;
+
+            if(*ptr == '#' && (i == 0 || word[i-1] == ' ' || word[i-1] == '\t' || word[i-1] == '\n'))
+                flag = 1;
+            else if(*ptr == ' ' || *ptr == '\t' || *ptr == '\n')
+                flag = 0;
+            else
+                flag = prev_flag;
+
+            if(flag != prev_flag && i != 0) {
+                word[i] = '\0';
+
+                foregroundColor = (prev_flag == 1) ? foregroundColor1 : foregroundColor0;
+                textAttribute = foregroundColor | backgroundColor;
+                SetConsoleTextAttribute(hStdout, textAttribute);
+
+                printf("%s", word);
+                i = 0;
+            }
+
+            word[i++] = *ptr++;
+        }
+
+        if(i != 0) {
+            word[i] = '\0';
+
+            foregroundColor = (prev_flag == 1) ? foregroundColor1 : foregroundColor0;
+            textAttribute = foregroundColor | backgroundColor;
+            SetConsoleTextAttribute(hStdout, textAttribute);
+
+            printf("%s", word);
+        }
+    }
+    printf("\n");
+
+    SetConsoleTextAttribute(hStdout, 7);
+
+    fclose(fp);
+    return 0;
+}
+/*
 #include <stdio.h>      // Подключаем библиотеку для работы с вводом/выводом
 #include <string.h>     // Подключаем библиотеку для работы со строками
 #include <windows.h>    // Подключаем библиотеку для работы с консолью Windows
@@ -87,3 +173,4 @@ int main(void) {        // Главная функция программы
     fclose(fp);                     // Закрываем файл
     return 0;                       // Завершаем программу успешно
 }
+ */
