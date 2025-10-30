@@ -1,13 +1,9 @@
 #include <stdio.h>
 #include <string.h>
-#include <windows.h>
-
 #define MAX_LINE_LENGTH 1000
 
 int main() {
     FILE *input, *output;
-
-    SetConsoleOutputCP(CP_UTF8);
 
 
     char line[MAX_LINE_LENGTH];

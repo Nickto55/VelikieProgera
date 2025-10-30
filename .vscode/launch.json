@@ -8,10 +8,10 @@
       "args": [],
       "stopAtEntry": false,
       "externalConsole": true,
-      "cwd": "c:/Users/truni/projects/VelikieProgera/programmingBasics/laba1",
-      "program": "c:/Users/truni/projects/VelikieProgera/programmingBasics/laba1/build/Debug/outDebug",
+      "cwd": "c:/Users/truni/VS Code/VelikieProgera/build",
+      "program": "c:/Users/truni/VS Code/VelikieProgera/build/Debug/outDebug.exe",
       "MIMode": "gdb",
-      "miDebuggerPath": "gdb",
+      "miDebuggerPath": "C:/msys64/ucrt64/bin/gdb.exe",
       "setupCommands": [
         {
           "description": "Enable pretty-printing for gdb",

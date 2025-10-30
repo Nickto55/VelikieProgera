@@ -1,0 +1,62 @@
+#include <stdio.h>
+#define MAXLINE 1024
+
+int main(void) {
+    FILE *fpin, *fpout;
+    char input_File;
+    char line[MAXLINE];
+    int in_block_comment = 0; // флаг: внутри /* ... */ комментария?
+
+    printf("Введите имя файла, с расширением: ");
+    scanf("%string", &input_File);
+
+    // Открытие файлов
+    fpin = fopen("input_File", "r");
+    if (fpin == NULL) {
+        printf("Ошибка открытия входного файла\n");
+        return 1;
+    }
+
+    fpout = fopen("result.txt", "w");
+    if (fpout == NULL) {
+        printf("Ошибка открытия выходного файла\n");
+        fclose(fpin);
+        return 1;
+    }
+
+    // Чтение файла по строкам
+    while (fgets(line, MAXLINE, fpin)) {
+        char out_line[MAXLINE];
+        int i = 0, j = 0;
+
+        while (line[i] != '\0') {
+            if (in_block_comment) {
+                // Ищем конец блочного комментария
+                if (line[i] == '*' && line[i+1] == '/') {
+                    in_block_comment = 0;
+                    i += 2; // Пропускаем "*/"
+                    continue;
+                }
+                i++; // Пропускаем символы внутри комментария
+            } else {
+                // Проверка на начало комментариев
+                if (line[i] == '/' && line[i+1] == '*') {
+                    in_block_comment = 1;
+                    i += 2;
+                    continue;
+                }
+                if (line[i] == '/' && line[i+1] == '/') {
+                    break; // Игнорируем остаток строки
+                }
+                out_line[j++] = line[i++]; // Копируем символ
+            }
+        }
+
+        out_line[j] = '\0'; // Завершаем строку
+        fputs(out_line, fpout); // Пишем в выходной файл
+    }
+
+    fclose(fpin);
+    fclose(fpout);
+    return 0;
+}
