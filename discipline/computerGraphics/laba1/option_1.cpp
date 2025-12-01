@@ -1,4 +1,3 @@
-#define _USE_MATH_DEFINES
 #include <X11/Xlib.h>
 #include <X11/Xutil.h>
 #include <X11/keysymdef.h>
@@ -42,23 +41,6 @@ void normirovka(double *mass, int size[]) {
             *(mass + (i * size[1]) + 2) = 1;
         }
     }
-}
-
-void koord_peresech(double *out, double *krest, int *size) {
-    double x1 = *(krest + 0), x2 = *(krest + 3), x3 = *(krest + 6), x4 = *(krest + 9);
-    double y1 = *(krest + 1), y2 = *(krest + 4), y3 = *(krest + 7), y4 = *(krest + 10);
-
-    double denom = (x1 - x2) * (y3 - y4) - (y1 - y2) * (x3 - x4);
-    if (denom == 0) {
-        *(out + 0) = 0;
-        *(out + 1) = 0;
-        *(out + 2) = 1;
-        return;
-    }
-
-    *(out + 0) = ((x1 * y2 - y1 * x2) * (x3 - x4) - (x1 - x2) * (x3 * y4 - y3 * x4)) / denom;
-    *(out + 1) = ((x1 * y2 - y1 * x2) * (y3 - y4) - (y1 - y2) * (x3 * y4 - y3 * x4)) / denom;
-    *(out + 2) = 1;
 }
 
 void deistvie(int chto_delaem, int size[], double *mass, double var[]) {
@@ -156,7 +138,7 @@ int size[2] = {4, 3};
 int main() {
     Display *display = XOpenDisplay(NULL);
     if (display == NULL) {
-        fprintf(stderr, "Не удалось открыть дисплей X11\n");
+        fprintf(stderr, "No display\n");
         return 1;
     }
 
@@ -178,8 +160,11 @@ int main() {
 
     XSelectInput(display, window, ExposureMask | KeyPressMask | StructureNotifyMask);
 
-    const char *window_title = "titrkasd";
+    const char *window_title = "titr";
     XStoreName(display, window, window_title);
+
+    Atom wm_delete_window = XInternAtom(display, "WM_DELETE_WINDOW", False);
+    XSetWMProtocols(display, window, &wm_delete_window, 1);
 
     XMapWindow(display, window);
 
@@ -191,8 +176,8 @@ int main() {
 
     copy_matrix(&krest[0][0], &nachal_koord[0][0], size);
 
-    bool needRedraw = true;
-    bool running = true;
+    int needRedraw = 1;
+    int running = 1;
 
     while (running) {
         while (XPending(display) > 0) {
@@ -201,7 +186,7 @@ int main() {
 
             switch (event.type) {
                 case Expose:
-                    needRedraw = true;
+                    needRedraw = 1;
                     break;
 
                 case ConfigureNotify:
@@ -219,15 +204,12 @@ int main() {
                         image_surface = cairo_image_surface_create(CAIRO_FORMAT_ARGB32, window_width, window_height);
                         image_cr = cairo_create(image_surface);
 
-                        needRedraw = true;
+                        needRedraw = 1;
                     }
                     break;
 
                 case KeyPress: {
-                    KeySym keysym;
-                    char input_char[1];
-                    XLookupString(&event.xkey, input_char, 1, &keysym, NULL);
-
+                    KeySym keysym = XLookupKeysym(&event.xkey, 0);
                     double var[2] = {0, 0};
                     int chto_delaem = -1;
 
@@ -240,22 +222,21 @@ int main() {
                         case XK_z: case XK_Z: var[0] = 1.05; var[1] = 1.05; chto_delaem = 1; break;
                         case XK_q: case XK_Q: var[0] = -M_PI / 36; chto_delaem = 2; break;
                         case XK_e: case XK_E: var[0] = M_PI / 36; chto_delaem = 2; break;
-                        case XK_r: case XK_R: copy_matrix(&krest[0][0], &nachal_koord[0][0], size); needRedraw = true; break;
-                        case XK_Escape: running = false; break;
+                        case XK_r: case XK_R: copy_matrix(&krest[0][0], &nachal_koord[0][0], size); needRedraw = 1; break;
+                        case XK_Escape: running = 0; break;
                         default: break;
                     }
 
                     if (chto_delaem != -1) {
                         deistvie(chto_delaem, size, &krest[0][0], var);
-                        needRedraw = true;
+                        needRedraw = 1;
                     }
                     break;
                 }
 
                 case ClientMessage:
-                    if (event.xclient.message_type == XInternAtom(display, "WM_PROTOCOLS", False) &&
-                        event.xclient.data.l[0] == XInternAtom(display, "WM_DELETE_WINDOW", False)) {
-                        running = false;
+                    if (event.xclient.data.l[0] == wm_delete_window) {
+                        running = 0;
                     }
                     break;
             }
@@ -286,7 +267,7 @@ int main() {
 
             cairo_surface_flush(xlib_surface);
             XFlush(display);
-            needRedraw = false;
+            needRedraw = 0;
         }
 
         usleep(1000);

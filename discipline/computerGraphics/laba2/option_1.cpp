@@ -1,4 +1,3 @@
-//вариант с треугольником
 #define _USE_MATH_DEFINES
 #include <windows.h>
 #include <math.h>
@@ -49,7 +48,7 @@ void bresenhamLine(HDC hdc, double x0, double y0, double x1, double y1, COLORREF
     double err = dx + dy, e2;
 
     while (1) {
-        SetPixel(hdc, (int)x0, (int)y0, color);
+        SetPixel(hdc, (Int)x0, (int)y0, color);
         if (x0 == x1 && y0 == y1) break;
         e2 = 2 * err;
         if (e2 >= dy) { err += dy; x0 += sx; }
