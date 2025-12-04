@@ -1,195 +1,242 @@
-#include <X11/Xlib.h>
-#include <X11/Xutil.h>
-#include <GL/gl.h>
-#include <GL/glx.h>
-#include <cmath>
-#include <cstring>
-#include <cstdlib>
-#include <iostream>
+//вариант с треугольником
+#define _USE_MATH_DEFINES
+#include <windows.h>
+#include <math.h>
 
-#define M_PI 3.14159265358979323846
-
-struct Vec3 {
-    double x, y, w;
-    Vec3(double x = 0, double y = 0, double w = 1) : x(x), y(y), w(w) {}
-};
-
-void mult_matrix(double* result, const double* a, const double* b, int rows_a, int cols_a, int cols_b) {
-    for (int i = 0; i < rows_a; ++i) {
-        for (int j = 0; j < cols_b; ++j) {
-            result[i * cols_b + j] = 0;
-            for (int k = 0; k < cols_a; ++k) {
-                result[i * cols_b + j] += a[i * cols_a + k] * b[k * cols_b + j];
+// Функция для умножения матриц
+void multi_mass(double* out, double* m1, int size1[], double* m2, int size2[]) {
+    for (int i = 0; i < size1[0]; i++) {
+        for (int j = 0; j < size2[1]; j++) {
+            *(out + (i * size2[1]) + j) = 0;
+            for (int k = 0; k < size1[1]; k++) {
+                *(out + (i * size2[1]) + j) += *(m1 + (i * size1[1]) + k) * (*(m2 + (k * size2[1]) + j));
             }
         }
     }
 }
 
-void copy_data(double* dest, const double* src, int n) {
-    std::memcpy(dest, src, n * sizeof(double));
+// Функция для копирования одной матрицы в другую
+void copy_matrix(double* m1, double* m2, int size[]) {
+    for (int i = 0; i < (size[0] * size[1]); i++)
+        *(m1 + i) = (*(m2 + i));
 }
 
-void round_elements(double* arr, int n) {
-    for (int i = 0; i < n; ++i) {
-        arr[i] = std::round(arr[i]);
-    }
+// Функция для округления элементов матрицы
+void round_mat(double* m1, int size[]) {
+    for (int i = 0; i < (size[0] * size[1]); i++)
+        *(m1 + i) = round(*(m1 + i));
 }
 
-void normalize_coords(double* points, int num_points) {
-    for (int i = 0; i < num_points; ++i) {
-        double w = points[i * 3 + 2];
-        if (w != 0 && w != 1) {
-            points[i * 3] /= w;
-            points[i * 3 + 1] /= w;
-            points[i * 3 + 2] = 1.0;
+// Функция для нормализации матрицы
+void normirovka(double* mass, int size[]) {
+    for (int i = 0; i < size[0]; i++) {
+        if (*(mass + (i * size[1]) + 2) == 0)
+            *(mass + (i * size[1]) + 2) = 1;
+        else if (*(mass + (i * size[1]) + 2) != 1) {
+            *(mass + (i * size[1]) + 0) /= *(mass + (i * size[1]) + 2);
+            *(mass + (i * size[1]) + 1) /= *(mass + (i * size[1]) + 2);
+            *(mass + (i * size[1]) + 2) = 1;
         }
     }
 }
 
-void draw_line_gl(double x0, double y0, double x1, double y1, float r, float g, float b) {
-    glColor3f(r, g, b);
-    glBegin(GL_LINES);
-    glVertex2d(x0, y0);
-    glVertex2d(x1, y1);
-    glEnd();
-}
+// Алгоритм Брезенхема для рисования линии
+void bresenhamLine(HDC hdc, double x0, double y0, double x1, double y1, COLORREF color = RGB(255, 0, 0)) {
+    double dx = fabs(x1 - x0);
+    double sx = x0 < x1 ? 1 : -1;
+    double dy = -fabs(y1 - y0);
+    double sy = y0 < y1 ? 1 : -1;
+    double err = dx + dy, e2;
 
-void calculate_centroid(double& cx, double& cy, const double* points, int num_points) {
-    cx = 0; cy = 0;
-    for (int i = 0; i < num_points; ++i) {
-        cx += points[i * 3];
-        cy += points[i * 3 + 1];
+    while (1) {
+        SetPixel(hdc, (int)x0, (int)y0, color);
+        if (x0 == x1 && y0 == y1) break;
+        e2 = 2 * err;
+        if (e2 >= dy) { err += dy; x0 += sx; }
+        if (e2 <= dx) { err += dx; y0 += sy; }
     }
-    cx /= num_points;
-    cy /= num_points;
 }
 
-void apply_transform(int type, double* points, int num_points, double* params) {
-    if (type == -1) return;
+// Найти центр масс треугольника (среднее арифметическое координат вершин)
+void find_center(double* center, double* mass, int size[]) {
+    center[0] = center[1] = 0.0;
+    for (int i = 0; i < size[0]; i++) {
+        center[0] += mass[i * size[1] + 0];
+        center[1] += mass[i * size[1] + 1];
+    }
+    center[0] /= size[0];
+    center[1] /= size[0];
+    center[2] = 1.0;
+}
 
-    double temp[9];
-    double matrix[9];
-    double center_x, center_y;
-    calculate_centroid(center_x, center_y, points, num_points);
+// Выполняет преобразование: сдвиг, масштабирование, поворот относительно центра масс
+void deistvie(int chto_delaem, int size[], double* mass, double var[]) {
+    if (chto_delaem == -1) return;
 
-    // Translate to origin
-    double trans_to_origin[9] = {1,0,0, 0,1,0, -center_x,-center_y,1};
-    mult_matrix(temp, points, trans_to_origin, num_points, 3, 3);
-    copy_data(points, temp, num_points * 3);
+    double mat[3][3];
+    int size_mat[2] = { 3, 3 };
+    double res[3][3]; // Теперь 3 точки — треугольник
+    double center[3];
 
-    // Apply transformation
-    if (type == 0) { // Translation
-        matrix[0] = 1; matrix[1] = 0; matrix[2] = 0;
-        matrix[3] = 0; matrix[4] = 1; matrix[5] = 0;
-        matrix[6] = params[0]; matrix[7] = params[1]; matrix[8] = 1;
-    } else if (type == 1) { // Scale
-        matrix[0] = params[0]; matrix[1] = 0; matrix[2] = 0;
-        matrix[3] = 0; matrix[4] = params[1]; matrix[5] = 0;
-        matrix[6] = 0; matrix[7] = 0; matrix[8] = 1;
-    } else if (type == 2) { // Rotate
-        double c = std::cos(params[0]);
-        double s = std::sin(params[0]);
-        matrix[0] = c; matrix[1] = s; matrix[2] = 0;
-        matrix[3] = -s; matrix[4] = c; matrix[5] = 0;
-        matrix[6] = 0; matrix[7] = 0; matrix[8] = 1;
+    // Найти центр масс треугольника
+    find_center(center, mass, size);
+
+    // Сдвинуть к центру
+    mat[0][0] = 1; mat[0][1] = 0; mat[0][2] = 0;
+    mat[1][0] = 0; mat[1][1] = 1; mat[1][2] = 0;
+    mat[2][0] = -center[0]; mat[2][1] = -center[1]; mat[2][2] = 1;
+    multi_mass(&res[0][0], mass, size, &mat[0][0], size_mat);
+    copy_matrix(mass, &res[0][0], size);
+
+    // Применить преобразование
+    if (chto_delaem == 0) { // Сдвиг
+        mat[0][0] = 1; mat[0][1] = 0; mat[0][2] = 0;
+        mat[1][0] = 0; mat[1][1] = 1; mat[1][2] = 0;
+        mat[2][0] = var[0]; mat[2][1] = var[1]; mat[2][2] = 1;
+    }
+    else if (chto_delaem == 1) { // Масштабирование
+        mat[0][0] = var[0]; mat[0][1] = 0; mat[0][2] = 0;
+        mat[1][0] = 0; mat[1][1] = var[1]; mat[1][2] = 0;
+        mat[2][0] = 0; mat[2][1] = 0; mat[2][2] = 1;
+    }
+    else if (chto_delaem == 2) { // Поворот
+        double angle = var[0];
+        mat[0][0] = cos(angle); mat[0][1] = sin(angle); mat[0][2] = 0;
+        mat[1][0] = -sin(angle); mat[1][1] = cos(angle); mat[1][2] = 0;
+        mat[2][0] = 0; mat[2][1] = 0; mat[2][2] = 1;
     }
 
-    mult_matrix(temp, points, matrix, num_points, 3, 3);
-    copy_data(points, temp, num_points * 3);
+    multi_mass(&res[0][0], mass, size, &mat[0][0], size_mat);
+    copy_matrix(mass, &res[0][0], size);
 
-    // Translate back
-    double trans_back[9] = {1,0,0, 0,1,0, center_x,center_y,1};
-    mult_matrix(temp, points, trans_back, num_points, 3, 3);
-    copy_data(points, temp, num_points * 3);
+    // Вернуть из центра
+    mat[0][0] = 1; mat[0][1] = 0; mat[0][2] = 0;
+    mat[1][0] = 0; mat[1][1] = 1; mat[1][2] = 0;
+    mat[2][0] = center[0]; mat[2][1] = center[1]; mat[2][2] = 1;
+    multi_mass(&res[0][0], mass, size, &mat[0][0], size_mat);
+    copy_matrix(mass, &res[0][0], size);
 
-    normalize_coords(points, num_points);
+    normirovka(mass, size);
 }
 
-double initial_coords[9] = {
-    100, 100, 1,
-    300, 150, 1,
-    200, 300, 1
+// Глобальные данные — треугольник из 3 точек
+double nachal_koord[3][3] = {
+    {100, 100, 1},  // Вершина 1
+    {300, 150, 1},  // Вершина 2
+    {200, 300, 1}   // Вершина 3 — неправильный треугольник
 };
-double current_coords[9];
-double render_coords[9];
+double krest[3][3];
+double risunok[3][3];
+int size[2] = {3, 3}; // 3 точки, 3 координаты (x, y, w)
 
-int main() {
-    Display* display = XOpenDisplay(NULL);
-    if (!display) {
-        std::cerr << "Cannot open display" << std::endl;
+// Обработчик окна
+LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
+    static bool needRedraw = true;
+
+    switch (uMsg) {
+    case WM_PAINT: {
+        PAINTSTRUCT ps;
+        HDC hdc = BeginPaint(hwnd, &ps);
+
+        // Очистка фона
+        SetBkColor(hdc, RGB(255, 255, 255));
+        SetBkMode(hdc, OPAQUE);
+        Rectangle(hdc, 0, 0, 1900, 1200);
+
+        // Настройка для рисования
+        SetBkMode(hdc, TRANSPARENT);
+
+        // Копируем и округляем координаты
+        copy_matrix(&risunok[0][0], &krest[0][0], size);
+        round_mat(&risunok[0][0], size);
+
+        // Рисуем треугольник: 3 линии между вершинами
+        bresenhamLine(hdc, risunok[0][0], risunok[0][1], risunok[1][0], risunok[1][1], RGB(255, 0, 0));
+        bresenhamLine(hdc, risunok[1][0], risunok[1][1], risunok[2][0], risunok[2][1], RGB(0, 128, 0));
+        bresenhamLine(hdc, risunok[2][0], risunok[2][1], risunok[0][0], risunok[0][1], RGB(0, 0, 255));
+
+        EndPaint(hwnd, &ps);
+        needRedraw = false;
+        break;
+    }
+
+    case WM_KEYDOWN: {
+        double var[2] = { 0, 0 };
+        int chto_delaem = -1;
+
+        switch (wParam) {
+        case 'W': case 'w': var[0] = 0; var[1] = -5; chto_delaem = 0; break;
+        case 'S': case 's': var[0] = 0; var[1] = 5; chto_delaem = 0; break;
+        case 'A': case 'a': var[0] = -5; var[1] = 0; chto_delaem = 0; break;
+        case 'D': case 'd': var[0] = 5; var[1] = 0; chto_delaem = 0; break;
+        case 'X': case 'x': var[0] = 0.95; var[1] = 0.95; chto_delaem = 1; break;
+        case 'Z': case 'z': var[0] = 1.05; var[1] = 1.05; chto_delaem = 1; break;
+        case 'Q': case 'q': var[0] = -M_PI / 36; chto_delaem = 2; break;
+        case 'E': case 'e': var[0] = M_PI / 36; chto_delaem = 2; break;
+        case 'R': case 'r': copy_matrix(&krest[0][0], &nachal_koord[0][0], size); needRedraw = true; break;
+        case VK_ESCAPE: PostQuitMessage(0); break;
+        default: break;
+        }
+
+        if (chto_delaem != -1) {
+            deistvie(chto_delaem, size, &krest[0][0], var);
+            needRedraw = true;
+            InvalidateRect(hwnd, NULL, FALSE);
+        }
+        break;
+    }
+
+    case WM_DESTROY:
+        PostQuitMessage(0);
+        return 0;
+    }
+
+    return DefWindowProcW(hwnd, uMsg, wParam, lParam);
+}
+
+// Точка входа
+int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow) {
+    WNDCLASSEXW wc = {};
+    wc.cbSize = sizeof(WNDCLASSEXW);
+    wc.lpfnWndProc = WindowProc;
+    wc.hInstance = hInstance;
+    wc.lpszClassName = L"TransformApp";
+    wc.hbrBackground = (HBRUSH)(COLOR_WINDOW + 1);
+    wc.hCursor = LoadCursor(NULL, IDC_ARROW);
+    wc.style = CS_HREDRAW | CS_VREDRAW;
+
+    if (!RegisterClassExW(&wc)) {
+        MessageBoxW(NULL, L"Не удалось зарегистрировать класс окна!", L"Ошибка", MB_OK | MB_ICONERROR);
         return 1;
     }
 
-    int screen = DefaultScreen(display);
-    Window root = DefaultRootWindow(display);
-    int depth = CopyFromParent;
-    XVisualInfo* visual = glXChooseVisual(display, screen, (int[]){GLX_RGBA, GLX_DEPTH_SIZE, 24, GLX_DOUBLEBUFFER, None});
-    Colormap colormap = XCreateColormap(display, root, visual->visual, AllocNone);
-    XSetWindowAttributes attrs;
-    attrs.colormap = colormap;
-    attrs.border_pixel = 0;
-    attrs.event_mask = KeyPressMask | ExposureMask;
+    HWND hwnd = CreateWindowExW(
+        0,
+        L"TransformApp",
+        L"Преобразования треугольника (WSAD: сдвиг, QE: поворот, ZX: масштаб, R: сброс, ESC: выход)",
+        WS_OVERLAPPEDWINDOW,
+        CW_USEDEFAULT, CW_USEDEFAULT, 800, 600,
+        NULL,
+        NULL,
+        hInstance,
+        NULL
+    );
 
-    Window win = XCreateWindow(display, root, 0, 0, 800, 600, 0, visual->depth, InputOutput, visual->visual, CWColormap | CWBorderPixel | CWEventMask, &attrs);
-    XStoreName(display, win, "Triangle Transform");
-    XMapWindow(display, win);
-
-    GLXContext context = glXCreateContext(display, visual, NULL, GL_TRUE);
-    glXMakeCurrent(display, win, context);
-
-    glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
-
-    copy_data(current_coords, initial_coords, 9);
-
-    bool should_redraw = true;
-    bool running = true;
-    while (running) {
-        if (should_redraw) {
-            glClear(GL_COLOR_BUFFER_BIT);
-            copy_data(render_coords, current_coords, 9);
-            round_elements(render_coords, 9);
-
-            draw_line_gl(render_coords[0], render_coords[1], render_coords[3], render_coords[4], 1.0f, 0.0f, 0.0f);
-            draw_line_gl(render_coords[3], render_coords[4], render_coords[6], render_coords[7], 0.0f, 1.0f, 0.0f);
-            draw_line_gl(render_coords[6], render_coords[7], render_coords[0], render_coords[1], 0.0f, 0.0f, 1.0f);
-
-            glXSwapBuffers(display, win);
-            should_redraw = false;
-        }
-
-        if (XPending(display) > 0) {
-            XEvent event;
-            XNextEvent(display, &event);
-            if (event.type == KeyPress) {
-                KeySym key = XLookupKeysym(&event.xkey, 0);
-                double vars[2];
-                int action = -1;
-
-                switch (key) {
-                    case 'w': case 'W': vars[0] = 0; vars[1] = -5; action = 0; break;
-                    case 's': case 'S': vars[0] = 0; vars[1] = 5; action = 0; break;
-                    case 'a': case 'A': vars[0] = -5; vars[1] = 0; action = 0; break;
-                    case 'd': case 'D': vars[0] = 5; vars[1] = 0; action = 0; break;
-                    case 'x': case 'X': vars[0] = 0.95; vars[1] = 0.95; action = 1; break;
-                    case 'z': case 'Z': vars[0] = 1.05; vars[1] = 1.05; action = 1; break;
-                    case 'q': case 'Q': vars[0] = -M_PI / 36; action = 2; break;
-                    case 'e': case 'E': vars[0] = M_PI / 36; action = 2; break;
-                    case 'r': case 'R': copy_data(current_coords, initial_coords, 9); should_redraw = true; break;
-                    case 65307: running = false; break;
-                }
-
-                if (action != -1) {
-                    apply_transform(action, current_coords, 3, vars);
-                    should_redraw = true;
-                }
-            } else if (event.type == Expose) {
-                should_redraw = true;
-            }
-        }
+    if (hwnd == NULL) {
+        MessageBoxW(NULL, L"Не удалось создать окно!", L"Ошибка", MB_OK | MB_ICONERROR);
+        return 1;
     }
 
-    glXDestroyContext(display, context);
-    XDestroyWindow(display, win);
-    XCloseDisplay(display);
+    // Копируем начальные координаты
+    copy_matrix(&krest[0][0], &nachal_koord[0][0], size);
+
+    ShowWindow(hwnd, nCmdShow);
+
+    MSG msg = {};
+    while (GetMessage(&msg, NULL, 0, 0)) {
+        TranslateMessage(&msg);
+        DispatchMessage(&msg);
+    }
+
     return 0;
 }
