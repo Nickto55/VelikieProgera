@@ -1,134 +1,99 @@
-#include <SFML/Graphics.hpp>
-#include <cmath>
-#include <vector>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <ctype.h>
 
-const double PI = 3.14159265358979323846;
+typedef struct {
+    char *line;
+    int word_count;
+} LineInfo;
 
-struct Matrix3x3 {
-    float m[3][3];
-
-    static Matrix3x3 identity() {
-        Matrix3x3 mat{};
-        for (int i = 0; i < 3; i++) mat.m[i][i] = 1;
-        return mat;
+int count_words(const char *str) {
+    int count = 0;
+    int in_word = 0;
+    while (*str) {
+        if (isspace((unsigned char)*str)) {
+            in_word = 0;
+        } else if (!in_word) {
+            in_word = 1;
+            count++;
+        }
+        str++;
     }
-
-    static Matrix3x3 translation(float dx, float dy) {
-        Matrix3x3 mat = identity();
-        mat.m[0][2] = dx;
-        mat.m[1][2] = dy;
-        return mat;
-    }
-
-    static Matrix3x3 rotation(float angleDeg) {
-        Matrix3x3 mat = identity();
-        float rad = angleDeg * PI / 180.0;
-        float c = cos(rad);
-        float s = sin(rad);
-        mat.m[0][0] = c; mat.m[0][1] = -s;
-        mat.m[1][0] = s; mat.m[1][1] = c;
-        return mat;
-    }
-
-    static Matrix3x3 scaling(float s) {
-        Matrix3x3 mat = identity();
-        mat.m[0][0] = s;
-        mat.m[1][1] = s;
-        return mat;
-    }
-};
-
-sf::Vector2f transformPoint(const sf::Vector2f& p, const Matrix3x3& mat) {
-    float x = mat.m[0][0]*p.x + mat.m[0][1]*p.y + mat.m[0][2];
-    float y = mat.m[1][0]*p.x + mat.m[1][1]*p.y + mat.m[1][2];
-    return sf::Vector2f(x, y);
+    return count;
 }
 
-Matrix3x3 multiply(const Matrix3x3& a, const Matrix3x3& b) {
-    Matrix3x3 r{};
-    for (int i = 0; i < 3; ++i)
-        for (int j = 0; j < 3; ++j)
-            for (int k = 0; k < 3; ++k)
-                r.m[i][j] += a.m[i][k] * b.m[k][j];
-    return r;
+int compare_lines(const void *a, const void *b) {
+    LineInfo *la = (LineInfo *)a;
+    LineInfo *lb = (LineInfo *)b;
+    return la->word_count - lb->word_count;
 }
 
-int main() {
-    sf::RenderWindow window(sf::VideoMode(800, 600), "Вращение вокруг центра");
-    window.setFramerateLimit(60);
+int main(int argc, char *argv[]) {
+    if (argc != 2) {
+        fprintf(stderr, "Использование: %s <input_file>\n", argv[0]);
+        return 1;
+    }
 
-    std::vector<sf::Vector2f> basePoints = {
-        {0.f, 0.f}, {50.f, 80.f}, {130.f, 60.f},
-        {150.f, 0.f}, {100.f, -60.f}, {40.f, -40.f}
-    };
+    FILE *input = fopen(argv[1], "r");
+    if (!input) {
+        perror("Не удалось открыть input файл");
+        return 1;
+    }
 
-    sf::ConvexShape hex;
-    hex.setPointCount(basePoints.size());
-    for (size_t i = 0; i < basePoints.size(); ++i)
-        hex.setPoint(i, basePoints[i]);
+    int line_count = 0;
+    char buffer[10000];
+    while (fgets(buffer, sizeof(buffer), input)) {
+        line_count++;
+    }
+    rewind(input);
 
-    hex.setFillColor(sf::Color::Transparent);
-    hex.setOutlineColor(sf::Color::Black);
-    hex.setOutlineThickness(2.f);
+    LineInfo *lines = malloc(line_count * sizeof(LineInfo));
+    if (!lines) {
+        fprintf(stderr, "Ошибка выделения памяти.\n");
+        fclose(input);
+        return 1;
+    }
 
-    // Вычисляем центр
-    sf::Vector2f center(0.f, 0.f);
-    for (auto& p : basePoints)
-        center += p;
-    center.x /= basePoints.size();
-    center.y /= basePoints.size();
+    for (int i = 0; i < line_count; i++) {
+        if (!fgets(buffer, sizeof(buffer), input)) break;
 
-    float angle = 0.f;
-    float scale = 1.f;
-    sf::Vector2f position(400, 300); // начальная позиция фигуры на экране
-
-    while (window.isOpen()) {
-        sf::Event event;
-        while (window.pollEvent(event)) {
-            if (event.type == sf::Event::Closed)
-                window.close();
+        int len = strlen(buffer);
+        if (len > 0 && buffer[len - 1] == '\n') {
+            buffer[len - 1] = '\0';
         }
 
-        if (sf::Keyboard::isKeyPressed(sf::Keyboard::Left))
-            position.x -= 3;
-        if (sf::Keyboard::isKeyPressed(sf::Keyboard::Right))
-            position.x += 3;
-        if (sf::Keyboard::isKeyPressed(sf::Keyboard::Up))
-            position.y -= 3;
-        if (sf::Keyboard::isKeyPressed(sf::Keyboard::Down))
-            position.y += 3;
+        lines[i].line = malloc(strlen(buffer) + 1);
+        if (!lines[i].line) {
+            fprintf(stderr, "Ошибка выделения памяти для строки.\n");
+            fclose(input);
+            for (int j = 0; j < i; j++) free(lines[j].line);
+            free(lines);
+            return 1;
+        }
+        strcpy(lines[i].line, buffer);
+        lines[i].word_count = count_words(lines[i].line);
+    }
+    fclose(input);
 
-        if (sf::Keyboard::isKeyPressed(sf::Keyboard::A))
-            angle -= 2;
-        if (sf::Keyboard::isKeyPressed(sf::Keyboard::D))
-            angle += 2;
+    qsort(lines, line_count, sizeof(LineInfo), compare_lines);
 
-        if (sf::Keyboard::isKeyPressed(sf::Keyboard::W))
-            scale *= 1.01f;
-        if (sf::Keyboard::isKeyPressed(sf::Keyboard::S))
-            scale *= 0.99f;
-
-        // Создание матриц преобразования
-        Matrix3x3 toOrigin = Matrix3x3::translation(-center.x, -center.y); // сдвиг к (0,0)
-        Matrix3x3 rot = Matrix3x3::rotation(angle);
-        Matrix3x3 scl = Matrix3x3::scaling(scale);
-        Matrix3x3 back = Matrix3x3::translation(center.x, center.y);       // вернуть обратно
-        Matrix3x3 move = Matrix3x3::translation(position.x, position.y);   // перенос на экран
-
-        // Итоговая матрица преобразования
-        Matrix3x3 finalMat = multiply(move, multiply(back, multiply(rot, multiply(scl, toOrigin))));
-
-        // Применяем матрицу преобразования ко всем точкам фигуры
-        for (size_t i = 0; i < basePoints.size(); ++i)
-            hex.setPoint(i, transformPoint(basePoints[i], finalMat));
-
-        // Не нужно вызывать setPosition, потому что это уже учтено в матрице.
-        // hex.setPosition(position); // УДАЛЁН!
-
-        window.clear(sf::Color::White);
-	window.draw(hex);
-        window.display();
+    FILE *output = fopen("output.txt", "w");
+    if (!output) {
+        perror("Не удалось создать output.txt");
+        for (int i = 0; i < line_count; i++) free(lines[i].line);
+        free(lines);
+        return 1;
     }
 
-    return 0;
+    for (int i = 0; i < line_count; i++) {
+        fprintf(output, "%s\n", lines[i].line);
+        free(lines[i].line);
+    }
+    fclose(output);
+    free(lines);
+
+    printf("Файл успешно отсортирован и сохранён в output.txt\n");
+    return 0;  
 }
+

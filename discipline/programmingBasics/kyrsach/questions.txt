@@ -1,0 +1,16 @@
+# Формат: ID | Вопрос | Категория | Уровень сложности | Номер правильного ответа (начиная с 1) | Ответ1;Ответ2;Ответ3;Ответ4
+1 | Какая функция используется для вывода текста в C? | C Programming | easy | 1 | printf;cout;print;sprintf
+2 | Что означает аббревиатура CPU? | Computer Science | easy | 4 | Central Processing Unit;Computer Processing Unit;Central Process Unit;Central Processing Unit
+3 | Какое максимальное значение может хранить тип данных int в большинстве систем? | C Programming | medium | 3 | 32767;2147483647;зависит от системы;-2147483648
+4 | Какой цвет получается при смешении красного и синего света? | Physics | medium | 2 | Зелёный;Фиолетовый;Оранжевый;Жёлтый
+5 | Какой протокол используется для передачи веб-страниц? | Networking | easy | 1 | HTTP;FTP;SMTP;TCP
+6 | Какое из этих устройств является устройством ввода? | Computer Hardware | easy | 3 | Монитор;Принтер;Клавиатура;Проектор
+7 | Какой алгоритм сортировки имеет наилучшую среднюю сложность O(n log n)? | Algorithms | hard | 4 | Bubble Sort;Selection Sort;Insertion Sort;Quick Sort
+8 | Какой элемент является основным компонентом процессора? | Computer Architecture | medium | 1 | Транзистор;Резистор;Конденсатор;Диод
+9 | Какой тип данных в C используется для хранения одиночного символа? | C Programming | easy | 2 | int;char;float;double
+10 | Какой язык программирования был разработан Бьёрном Страуструпом? | Programming Languages | medium | 1 | C++;Java;C#;Python
+11 | Какое расширение обычно имеют исполняемые файлы в Windows? | Operating Systems | easy | 3 | .txt;.doc;.exe;.pdf
+12 | Какой цвет получается при смешении всех трех основных цветов света? | Physics | medium | 4 | Чёрный;Красный;Зелёный;Белый
+13 | Какой командой в Git можно загрузить изменения из удаленного репозитория? | Version Control | medium | 2 | push;pull;commit;merge
+14 | Какой тип памяти теряет данные при отключении питания? | Computer Hardware | easy | 1 | RAM;ROM;HDD;SSD
+15 | Какой алгоритм поиска имеет сложность O(log n) в отсортированном массиве? | Algorithms | medium | 3 | Linear Search;Bubble Search;Binary Search;Selection Search

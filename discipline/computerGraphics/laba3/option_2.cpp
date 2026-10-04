@@ -1,6 +1,35 @@
 #define _USE_MATH_DEFINES
-#include <windows.h>
-#include <math.h>
+#include <X11/Xlib.h>
+#include <X11/Xutil.h>
+#include <cmath>
+#include <cstring>
+#include <cstdlib>
+#include <cstdio>
+#include <unistd.h>
+#ifndef M_PI
+#define M_PI 3.14159265358979323846
+#endif
+
+// Глобальные переменные X11
+Display *display;
+Window window;
+GC gc;
+Pixmap backBuffer;
+int screenWidth = 800;
+int screenHeight = 600;
+
+// Функция для установки пикселя
+void SetPixel(int x, int y, unsigned long color) {
+    if (x >= 0 && x < screenWidth && y >= 0 && y < screenHeight) {
+        XSetForeground(display, gc, color);
+        XDrawPoint(display, backBuffer, gc, x, y);
+    }
+}
+
+// RGB макрос для создания цвета
+unsigned long RGB(int r, int g, int b) {
+    return ((unsigned long)(r & 0xFF) << 16) | ((unsigned long)(g & 0xFF) << 8) | (b & 0xFF);
+}
 
 // Функция для умножения матриц
 void multi_mass(double *out, double *m1, int size1[], double *m2, int size2[]) {
@@ -40,7 +69,7 @@ void normirovka(double *mass, int size[]) {
 }
 
 // Алгоритм Брезенхема для рисования линии
-void bresenhamLine(HDC hdc, double x0, double y0, double x1, double y1, COLORREF color = RGB(255, 0, 0)) {
+void bresenhamLine(double x0, double y0, double x1, double y1, unsigned long color = 0xFF0000) {
     double dx = fabs(x1 - x0);
     double sx = x0 < x1 ? 1 : -1;
     double dy = -fabs(y1 - y0);
@@ -48,7 +77,7 @@ void bresenhamLine(HDC hdc, double x0, double y0, double x1, double y1, COLORREF
     double err = dx + dy, e2;
 
     while (1) {
-        SetPixel(hdc, (int)x0, (int)y0, color);
+        SetPixel((int)x0, (int)y0, color);
         if (x0 == x1 && y0 == y1) break;
         e2 = 2 * err;
         if (e2 >= dy) { err += dy; x0 += sx; }
@@ -117,7 +146,7 @@ void deistvie(int chto_delaem, int size[], double *mass, double var[]) {
 }
 
 // Заливка многоугольника методом сканирующей линии
-void fillPolygon(HDC hdc, double points[][3], int numPoints, COLORREF fillColor) {
+void fillPolygon(double points[][3], int numPoints, unsigned long fillColor) {
     if (numPoints < 3) return;
 
     // Находим minY и maxY
@@ -165,7 +194,7 @@ void fillPolygon(HDC hdc, double points[][3], int numPoints, COLORREF fillColor)
         double xEnd = intersections[count - 1];
 
         for (int x = (int)floor(xStart); x <= (int)ceil(xEnd); x++) {
-            SetPixel(hdc, x, y, fillColor);
+            SetPixel(x, y, fillColor);
         }
     }
 }
@@ -177,121 +206,138 @@ double krest[4][3];
 double risunok[4][3];
 int size[2] = {4, 3}; // 4 точки, 3 координаты (x, y, w)
 
-// Обработчик окна
-LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
-    static bool needRedraw = true;
+// Функция отрисовки
+void draw() {
+    // Очистка буфера (белый фон)
+    XSetForeground(display, gc, 0xFFFFFF);
+    XFillRectangle(display, backBuffer, gc, 0, 0, screenWidth, screenHeight);
 
-    switch (uMsg) {
-        case WM_PAINT: {
-            PAINTSTRUCT ps;
-            HDC hdc = BeginPaint(hwnd, &ps);
+    // Копируем текущие координаты и округляем
+    copy_matrix(&risunok[0][0], &krest[0][0], size);
+    round_mat(&risunok[0][0], size);
 
-            // Очистка фона
-            SetBkColor(hdc, RGB(255, 255, 255));
-            SetBkMode(hdc, OPAQUE);
-            Rectangle(hdc, 0, 0, 1900, 1200);
+    // Сначала — ЗАЛИВКА
+    fillPolygon(risunok, 4, RGB(200, 230, 255)); // Светло-голубой
 
-            // Копируем текущие координаты и округляем
-            copy_matrix(&risunok[0][0], &krest[0][0], size);
-            round_mat(&risunok[0][0], size);
+    // Потом — КОНТУР (линии поверх заливки)
+    bresenhamLine(risunok[0][0], risunok[0][1], risunok[1][0], risunok[1][1], RGB(255, 0, 0)); // верх
+    bresenhamLine(risunok[1][0], risunok[1][1], risunok[2][0], risunok[2][1], RGB(0, 255, 0)); // право
+    bresenhamLine(risunok[2][0], risunok[2][1], risunok[3][0], risunok[3][1], RGB(0, 0, 255)); // низ
+    bresenhamLine(risunok[3][0], risunok[3][1], risunok[0][0], risunok[0][1], RGB(255, 255, 0)); // лево
 
-            // Сначала — ЗАЛИВКА
-            fillPolygon(hdc, risunok, 4, RGB(200, 230, 255)); // Светло-голубой
-
-            // Потом — КОНТУР (линии поверх заливки)
-            bresenhamLine(hdc, risunok[0][0], risunok[0][1], risunok[1][0], risunok[1][1], RGB(255, 0, 0)); // верх
-            bresenhamLine(hdc, risunok[1][0], risunok[1][1], risunok[2][0], risunok[2][1], RGB(0, 255, 0)); // право
-            bresenhamLine(hdc, risunok[2][0], risunok[2][1], risunok[3][0], risunok[3][1], RGB(0, 0, 255)); // низ
-            bresenhamLine(hdc, risunok[3][0], risunok[3][1], risunok[0][0], risunok[0][1], RGB(255, 255, 0)); // лево
-
-            EndPaint(hwnd, &ps);
-            needRedraw = false;
-            break;
-        }
-
-        case WM_KEYDOWN: {
-            double var[2] = {0, 0};
-            int chto_delaem = -1;
-
-            switch (wParam) {
-                case 'W': case 'w': var[0] = 0; var[1] = -5; chto_delaem = 0; break;
-                case 'S': case 's': var[0] = 0; var[1] = 5; chto_delaem = 0; break;
-                case 'A': case 'a': var[0] = -5; var[1] = 0; chto_delaem = 0; break;
-                case 'D': case 'd': var[0] = 5; var[1] = 0; chto_delaem = 0; break;
-                case 'X': case 'x': var[0] = 0.95; var[1] = 0.95; chto_delaem = 1; break;
-                case 'Z': case 'z': var[0] = 1.05; var[1] = 1.05; chto_delaem = 1; break;
-                case 'Q': case 'q': var[0] = -M_PI / 36; chto_delaem = 2; break;
-                case 'E': case 'e': var[0] = M_PI / 36; chto_delaem = 2; break;
-                case 'R': case 'r':
-                    copy_matrix(&krest[0][0], &nachal_koord[0][0], size);
-                    needRedraw = true;
-                    InvalidateRect(hwnd, NULL, FALSE);
-                    break;
-                case VK_ESCAPE:
-                    PostQuitMessage(0);
-                    break;
-                default: break;
-            }
-
-            if (chto_delaem != -1) {
-                deistvie(chto_delaem, size, &krest[0][0], var);
-                needRedraw = true;
-                InvalidateRect(hwnd, NULL, FALSE);
-            }
-            break;
-        }
-
-        case WM_DESTROY:
-            PostQuitMessage(0);
-            return 0;
-    }
-
-    return DefWindowProcW(hwnd, uMsg, wParam, lParam);
+    // Копируем буфер на экран
+    XCopyArea(display, backBuffer, window, gc, 0, 0, screenWidth, screenHeight, 0, 0);
+    XFlush(display);
 }
 
-// Точка входа
-int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow) {
-    WNDCLASSEXW wc = {};
-    wc.cbSize = sizeof(WNDCLASSEXW);
-    wc.lpfnWndProc = WindowProc;
-    wc.hInstance = hInstance;
-    wc.lpszClassName = L"TransformApp";
-    wc.hbrBackground = (HBRUSH)(COLOR_WINDOW + 1);
-    wc.hCursor = LoadCursor(NULL, IDC_ARROW);
-    wc.style = CS_HREDRAW | CS_VREDRAW;
-
-    if (!RegisterClassExW(&wc)) {
-        MessageBoxW(NULL, L"Не удалось зарегистрировать класс окна!", L"Ошибка", MB_OK | MB_ICONERROR);
+// Основная функция
+int main() {
+    // Открываем дисплей
+    display = XOpenDisplay(NULL);
+    if (!display) {
+        fprintf(stderr, "Не удалось открыть дисплей X11\n");
         return 1;
     }
 
-    HWND hwnd = CreateWindowExW(
-        0,
-        L"TransformApp",
-        L"Преобразования фигур (WSAD: сдвиг, QE: поворот, ZX: масштаб, R: сброс, ESC: выход)",
-        WS_OVERLAPPEDWINDOW,
-        CW_USEDEFAULT, CW_USEDEFAULT, 800, 600,
-        NULL,
-        NULL,
-        hInstance,
-        NULL
-    );
+    int screen = DefaultScreen(display);
+    Window rootWindow = RootWindow(display, screen);
+    
+    // Создаём окно
+    window = XCreateSimpleWindow(display, rootWindow, 
+                                  100, 100, screenWidth, screenHeight, 1,
+                                  BlackPixel(display, screen), 
+                                  WhitePixel(display, screen));
 
-    if (hwnd == NULL) {
-        MessageBoxW(NULL, L"Не удалось создать окно!", L"Ошибка", MB_OK | MB_ICONERROR);
-        return 1;
-    }
+    XStoreName(display, window, "Graphics Lab 3");
+
+    // Выбираем события
+    XSelectInput(display, window, ExposureMask | KeyPressMask);
+
+    // Создаём контекст графики
+    gc = XCreateGC(display, window, 0, NULL);
+
+    // Создаём буфер для двойной буферизации (Pixmap)
+    backBuffer = XCreatePixmap(display, window, screenWidth, screenHeight, 
+                               DefaultDepth(display, screen));
+    
+    // Заполняем буфер белым
+    XSetForeground(display, gc, WhitePixel(display, screen));
+    XFillRectangle(display, backBuffer, gc, 0, 0, screenWidth, screenHeight);
+
+    // Подписываемся на событие закрытия окна
+    Atom wmDelete = XInternAtom(display, "WM_DELETE_WINDOW", True);
+    XSetWMProtocols(display, window, &wmDelete, 1);
+
+    // Показываем окно
+    XMapWindow(display, window);
 
     // Копируем начальные координаты
     copy_matrix(&krest[0][0], &nachal_koord[0][0], size);
 
-    ShowWindow(hwnd, nCmdShow);
+    // Основной цикл событий
+    XEvent event;
+    bool running = true;
+    bool needRedraw = true;
 
-    MSG msg = {};
-    while (GetMessage(&msg, NULL, 0, 0)) {
-        TranslateMessage(&msg);
-        DispatchMessage(&msg);
+    while (running) {
+        while (XPending(display) > 0) {
+            XNextEvent(display, &event);
+
+            switch (event.type) {
+                case Expose:
+                    needRedraw = true;
+                    break;
+
+                case KeyPress: {
+                    KeySym key = XLookupKeysym(&event.xkey, 0);
+                    double var[2] = {0, 0};
+                    int chto_delaem = -1;
+
+                    switch (key) {
+                        case XK_w: case XK_W: var[0] = 0; var[1] = -5; chto_delaem = 0; break;
+                        case XK_s: case XK_S: var[0] = 0; var[1] = 5; chto_delaem = 0; break;
+                        case XK_a: case XK_A: var[0] = -5; var[1] = 0; chto_delaem = 0; break;
+                        case XK_d: case XK_D: var[0] = 5; var[1] = 0; chto_delaem = 0; break;
+                        case XK_x: case XK_X: var[0] = 0.95; var[1] = 0.95; chto_delaem = 1; break;
+                        case XK_z: case XK_Z: var[0] = 1.05; var[1] = 1.05; chto_delaem = 1; break;
+                        case XK_q: case XK_Q: var[0] = -M_PI / 36; chto_delaem = 2; break;
+                        case XK_e: case XK_E: var[0] = M_PI / 36; chto_delaem = 2; break;
+                        case XK_r: case XK_R:
+                            copy_matrix(&krest[0][0], &nachal_koord[0][0], size);
+                            needRedraw = true;
+                            break;
+                        case XK_Escape:
+                            running = false;
+                            break;
+                        default: break;
+                    }
+
+                    if (chto_delaem != -1) {
+                        deistvie(chto_delaem, size, &krest[0][0], var);
+                        needRedraw = true;
+                    }
+                    break;
+                }
+
+                case ClientMessage:
+                    running = false;
+                    break;
+            }
+        }
+
+        if (needRedraw) {
+            draw();
+            needRedraw = false;
+        }
+
+        usleep(10000); // 10ms задержка для снижения нагрузки на CPU
     }
+
+    // Очистка ресурсов
+    XFreePixmap(display, backBuffer);
+    XFreeGC(display, gc);
+    XDestroyWindow(display, window);
+    XCloseDisplay(display);
 
     return 0;
 }

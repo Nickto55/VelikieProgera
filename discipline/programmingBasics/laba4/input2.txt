@@ -1,0 +1,14 @@
+#include <stdio.h>
+
+#define BUFFER_SIZE 1024
+
+int main() {
+    printf("Hello, World!\n");
+    return 0;
+}
+
+#ifdef DEBUG
+    printf("Debug mode\n");
+#else
+    printf("Release mode\n");
+#endiF

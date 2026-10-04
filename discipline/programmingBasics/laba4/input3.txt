@@ -1,0 +1,18 @@
+#include <stdlib.h>
+
+int main() {
+    #if defined(DEBUG)
+        printf("Debug build\n");
+    #elif defined(RELEASE)
+        printf("Release build\n");
+    #else
+        printf("Unknown build\n");
+    #endif
+
+    // Это просто комментарий: #include <something.h>
+    /*
+     * Многострочный комментарий:
+     * #define не_директива 123
+     */
+    return 0;
+}
