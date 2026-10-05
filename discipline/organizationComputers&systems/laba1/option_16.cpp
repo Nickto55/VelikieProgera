@@ -3,15 +3,13 @@
 
 using namespace std;
 
-// Структура union для работы с внутренним представлением double (64 бита)
-union DoubleUnion
+union union_double
 {
     double d;
     unsigned long long u;
 };
 
-// Функция вывода двоичного кода для unsigned int (32 бита)
-void printBinaryUInt(unsigned int val)
+void print_bin_for_int(unsigned int val)
 {
     for (int i = 31; i >= 0; --i)
     {
@@ -20,10 +18,9 @@ void printBinaryUInt(unsigned int val)
     cout << endl;
 }
 
-// Функция вывода двоичного кода для double через union (64 бита)
-void printBinaryDouble(double val)
+void print_bin_for_double(double val)
 {
-    DoubleUnion du;
+    union_double du;
     du.d = val;
     for (int i = 63; i >= 0; --i)
     {
@@ -32,11 +29,9 @@ void printBinaryDouble(double val)
     cout << endl;
 }
 
-// Преобразование unsigned int: сдвиг 1 влево, 0 вправо
-unsigned int transformUInt(unsigned int val)
+unsigned int transform_int(unsigned int val)
 {
     int countOnes = 0;
-    // Подсчет количества единиц с помощью поразрядных операций
     for (int i = 0; i < 32; ++i)
     {
         if ((val >> i) & 1)
@@ -45,7 +40,6 @@ unsigned int transformUInt(unsigned int val)
         }
     }
 
-    // Формирование результата: countOnes единиц слева, остальные нули
     if (countOnes == 0)
         return 0;
     if (countOnes == 32)
@@ -53,15 +47,13 @@ unsigned int transformUInt(unsigned int val)
     return (~0U) << (32 - countOnes);
 }
 
-// Преобразование double: сдвиг 1 влево, 0 вправо
-double transformDouble(double val)
+double transform_double(double val)
 {
-    DoubleUnion du;
+    union_double du;
     du.d = val;
     unsigned long long temp = du.u;
 
     int countOnes = 0;
-    // Подсчет количества единиц в 64-битном представлении
     for (int i = 0; i < 64; ++i)
     {
         if ((temp >> i) & 1)
@@ -70,7 +62,6 @@ double transformDouble(double val)
         }
     }
 
-    // Формирование нового 64-битного кода
     unsigned long long resultU;
     if (countOnes == 0)
     {
@@ -85,7 +76,6 @@ double transformDouble(double val)
         resultU = (~0ULL) << (64 - countOnes);
     }
 
-    // Запись преобразованного кода обратно в union для получения double
     du.u = resultU;
     return du.d;
 }
@@ -97,29 +87,30 @@ int main()
     unsigned int uintVal;
     double doubleVal;
 
-    // --- Работа с unsigned int ---
-    cout << "Введите значение unsigned int: ";
+    // int
+    cout << "введите значение int: ";
     cin >> uintVal;
 
-    cout << "Исходный unsigned int (двоичный код):  ";
-    printBinaryUInt(uintVal);
+    cout << "input int in bin:  ";
+    print_bin_for_int(uintVal);
 
-    unsigned int transformedUInt = transformUInt(uintVal);
-    cout << "Преобразованный unsigned int (двоичный): ";
-    printBinaryUInt(transformedUInt);
-    cout << "Преобразованный unsigned int (значение): " << transformedUInt << "\n\n";
+    unsigned int transformedUInt = transform_int(uintVal);
+    cout << "transformed int: ";
+    print_bin_for_int(transformedUInt);
+    cout << "transformed int: " << transformedUInt << "\n\n";
 
-    // --- Работа с double ---
-    cout << "Введите значение double: ";
+    // double
+    cout << "введите значение double: ";
     cin >> doubleVal;
 
-    cout << "Исходный double (двоичный код):  ";
-    printBinaryDouble(doubleVal);
+    cout << "input double in bin:  ";
+    print_bin_for_double(doubleVal);
 
-    double transformedDouble = transformDouble(doubleVal);
-    cout << "Преобразованный double (двоичный): ";
-    printBinaryDouble(transformedDouble);
-    cout << "Преобразованный double (значение): " << transformedDouble << endl;
+    double transformedDouble = transform_double(doubleVal);
+    cout << "transformed double bin: ";
+    print_bin_for_double(transformedDouble);
+    cout << "transformed double: " << transformedDouble << endl;
+    
 
     return 0;
 }
