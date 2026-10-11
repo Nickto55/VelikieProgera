@@ -6,7 +6,7 @@ using namespace std;
 union union_double
 {
     double d;
-    unsigned long long u;
+    unsigned long u;
 };
 
 void print_bin_for_int(unsigned int val)
@@ -51,7 +51,7 @@ double transform_double(double val)
 {
     union_double du;
     du.d = val;
-    unsigned long long temp = du.u;
+    unsigned long temp = du.u;
 
     int countOnes = 0;
     for (int i = 0; i < 64; ++i)
@@ -62,18 +62,18 @@ double transform_double(double val)
         }
     }
 
-    unsigned long long resultU;
+    unsigned long resultU;
     if (countOnes == 0)
     {
         resultU = 0;
     }
     else if (countOnes == 64)
     {
-        resultU = ~0ULL;
+        resultU = ~0UL;
     }
     else
     {
-        resultU = (~0ULL) << (64 - countOnes);
+        resultU = (~0UL) << (64 - countOnes);
     }
 
     du.u = resultU;
@@ -88,16 +88,16 @@ int main()
     double doubleVal;
 
     // int
-    cout << "введите значение int: ";
+    cout << "введите значение unsigned long: ";
     cin >> uintVal;
 
-    cout << "input int in bin:  ";
+    cout << "input unsigned long in bin:  ";
     print_bin_for_int(uintVal);
 
     unsigned int transformedUInt = transform_int(uintVal);
-    cout << "transformed int: ";
+    cout << "transformed unsigned long: ";
     print_bin_for_int(transformedUInt);
-    cout << "transformed int: " << transformedUInt << "\n\n";
+    cout << "transformed unsigned long: " << transformedUInt << "\n\n";
 
     // double
     cout << "введите значение double: ";
